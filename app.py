@@ -60,13 +60,13 @@ def retrieve(state: State): #defining node
     return {"context": content}
 
 from google.colab import userdata
-userdata.get('GOOGLE_API_KEY')
+api_key=userdata.get('GOOGLE_API_KEY')
 
 def generate(state: State):
     """Use Gemini to answer strictly from context with a score"""
 
     # 1. Provide your new key here
-    os.environ["GOOGLE_API_KEY"] = "AIzaSyCZhRq8Al0bQ_k8SGZhdl04MJWRZUsgYbU"
+    os.environ["GOOGLE_API_KEY"] = api_key
 
     # 2. Use Gemini 1.5 Flash (Free & Fast)
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
