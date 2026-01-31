@@ -19,3 +19,13 @@ A stateful RAG (Retrieval-Augmented Generation) application built to answer quer
 2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
+
+## 🧪 Sample Queries
+To test the chatbot's performance and grounding, you can use the following example queries:
+
+1. **Architecture:** "What are the core building blocks of an Agentic AI system?"
+2. **Comparison:** "What is the difference between proactiveness and reactiveness in AI agents?"
+3. **Logic:** "How does the 'Reasoning' component influence an agent's decision-making?"
+4. **Use Cases:** "How can Agentic AI be applied to optimize supply chain management?"
+5. **Memory:** "What is the role of memory in enabling an agent to learn from interactions?"
+6. **Constraint Test:** "What does the book say about the history of the internet?" *(This should return "I don't know" to prove strict grounding).*
