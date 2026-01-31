@@ -47,7 +47,7 @@ def generate(state: State):
         st.error("API Key not found in Secrets!")
         return {"answer": "Error: API Key missing.", "confidence_score": 0.0}
     
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, google_api_key=api_key)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0, google_api_key=api_key)
     
     prompt = ChatPromptTemplate.from_template("""
     You are an AI Assistant for the Agentic AI eBook. Answer ONLY using the context.
