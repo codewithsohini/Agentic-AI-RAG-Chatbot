@@ -9,123 +9,86 @@ Original file is located at
 
 
 
-"""Importing Libraries"""
-
+import streamlit as st
 import os
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
-
-"""Loading PDF"""
-
-pdf_url = "https://konverge.ai/pdf/Ebook-Agentic-AI.pdf"
-loader = PyPDFLoader(pdf_url)
-docs = loader.load()
-
-"""CHUNKING"""
-
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-splits = text_splitter.split_documents(docs)
-print(f"Number of splits: {len(splits)}")
-
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
-vectorstore = Chroma.from_documents(
-    documents=splits,
-    embedding=embeddings,
-    persist_directory="./chroma_db"
-)
-
-"""Retrieving"""
-
 import json
 from typing import TypedDict, List
-from langchain_openai import ChatOpenAI
+from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 
-class State(TypedDict): #defining state
+
+st.set_page_config(page_title="Agentic AI Assistant", page_icon="🤖")
+st.title("🤖 Agentic AI eBook Assistant")
+
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+vectorstore = Chroma(
+    persist_directory="./chroma_db", 
+    embedding_function=embeddings
+)
+
+class State(TypedDict):
     question: str
     context: List[str]
     answer: str
     confidence_score: float
 
-def retrieve(state: State): #defining node
-    """Search the Vector DB for relevant parts of the eBook"""
+def retrieve(state: State):
     query = state["question"]
     docs = vectorstore.similarity_search(query, k=3)
     content = [doc.page_content for doc in docs]
     return {"context": content}
 
-from google.colab import userdata
-api_key=userdata.get('GOOGLE_API_KEY')
-
 def generate(state: State):
-    """Use Gemini to answer strictly from context with a score"""
-
-    # 1. Provide your new key here
-    os.environ["GOOGLE_API_KEY"] = api_key
-
-    # 2. Use Gemini 1.5 Flash (Free & Fast)
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        st.error("API Key not found in Secrets!")
+        return {"answer": "Error: API Key missing.", "confidence_score": 0.0}
+    
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, google_api_key=api_key)
+    
     prompt = ChatPromptTemplate.from_template("""
-    You are an AI Assistant for the Agentic AI eBook.
-    Use ONLY the context below to answer.
-    If the answer isn't there, say "I don't know based on the text."
-
+    You are an AI Assistant for the Agentic AI eBook. Answer ONLY using the context.
     Context: {context}
     Question: {question}
-
-    Return JSON:
-    {{
-        "answer": "...",
-        "confidence_score": 0.0 to 1.0
-    }}
+    Return JSON: {{"answer": "...", "confidence_score": 0.0}}
     """)
-
+    
     chain = prompt | llm
-
-    # Run the chain
-    response = chain.invoke({
-        "context": "\n\n".join(state["context"]),
-        "question": state["question"]
-    })
-
-    # Clean up the output (Gemini often wraps JSON in ```json blocks)
+    response = chain.invoke({"context": "\n\n".join(state["context"]), "question": state["question"]})
+    
     content = response.content.replace("```json", "").replace("```", "").strip()
-
     try:
         data = json.loads(content)
-        return {
-            "answer": data.get("answer", "No answer found."),
-            "confidence_score": data.get("confidence_score", 0.0)
-        }
-    except Exception as e:
+        return {"answer": data.get("answer"), "confidence_score": data.get("confidence_score")}
+    except:
         return {"answer": response.content, "confidence_score": 0.5}
 
 workflow = StateGraph(State)
-
 workflow.add_node("retrieve", retrieve)
 workflow.add_node("generate", generate)
-
-# Define the flow: START -> Retrieve -> Generate -> END
 workflow.add_edge(START, "retrieve")
 workflow.add_edge("retrieve", "generate")
 workflow.add_edge("generate", END)
 rag_app = workflow.compile()
 
-# Test Query
-test_question = "What is the role of memory in Agentic AI?"
-result = rag_app.invoke({"question": test_question})
+user_input = st.text_input("Ask a question about the Agentic AI eBook:")
 
-print("\n--- INTERVIEW TASK RESPONSE ---")
-print(f"QUESTION: {test_question}")
-print(f"FINAL ANSWER: {result['answer']}")
-print(f"CONFIDENCE SCORE: {result['confidence_score']}")
-print("\n--- RETRIEVED CHUNKS ---")
-for i, chunk in enumerate(result['context']):
-    print(f"Chunk {i+1}: {chunk[:150]}...")
-
+if st.button("Ask Agent"):
+    if user_input:
+        with st.spinner("Analyzing eBook..."):
+            result = rag_app.invoke({"question": user_input})
+            
+            # Display Results
+            st.markdown(f"### Answer")
+            st.write(result['answer'])
+            
+            st.metric("Confidence Score", f"{result['confidence_score'] * 100}%")
+            
+            with st.expander("View Source Context"):
+                for i, chunk in enumerate(result['context']):
+                    st.info(f"Source {i+1}:\n{chunk}")
+    else:
+        st.warning("Please enter a question.")
