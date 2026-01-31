@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1RRo30W_pl7oPTeH8fsVQRRX1J8qnPOP1
 """
 
-!pip install -qU sentence-transformers langchain-huggingface langchain_community langchain_openai langchain-google-genai chromadb pypdf
+
 
 """Importing Libraries"""
 
@@ -129,4 +129,3 @@ print("\n--- RETRIEVED CHUNKS ---")
 for i, chunk in enumerate(result['context']):
     print(f"Chunk {i+1}: {chunk[:150]}...")
 
-!pip freeze > requirements.txt
